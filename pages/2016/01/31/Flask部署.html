@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="utf-8">
-    <title>李俊伟-随笔 - Python</title>
+    <title>李俊伟-随笔 - Flask部署</title>
     <meta name="description" content="">
     <meta name="author" content="李俊伟">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -54,23 +54,17 @@
     <div class="row">
 
         <div class="span9">
-        
-
-        
-
-
     <div class='article'>
         <div class="content-title">
-            <a href="/pages/2016/01/31/Flask部署.html"><h1>Flask部署</h1></a>
+            <h1>Flask部署</h1>
 2016-01-31
 
 by <a class="url fn" href="/author/li-jun-wei.html">李俊伟</a>
  
 
 
- 
         </div>
-        
+	
         <div><h2>前言</h2>
 <p>开发完公司的数据库自动化平台，接下来就是要部署测试，之前没真正部署过，这次正好学习了，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。</p>
 <h2>配置Python虚拟环境</h2>
@@ -224,21 +218,10 @@ nginx -s reload 重新载入配置文件，并重启
 <span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
     <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div></div>
-        <hr />
+	
+        <hr>
+
     </div>
-		
-<div class="pagination">
-<ul>
-    <li class="prev disabled"><a href="#">&larr; Previous</a></li>
-
-    <li class="active"><a href="/tag/python.html">1</a></li>
-
-    <li class="next disabled"><a href="#">&rarr; Next</a></li>
-
-</ul>
-</div>
- 
-  
         </div>
         
         <div class="span3">

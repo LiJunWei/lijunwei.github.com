@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>李俊伟-随笔</title><link href="/" rel="alternate"></link><link href="/feeds/li-jun-wei.atom.xml" rel="self"></link><id>/</id><updated>2016-01-31T14:27:00+08:00</updated><entry><title>Flask部署</title><link href="/pages/2016/01/31/Flask%E9%83%A8%E7%BD%B2.html" rel="alternate"></link><updated>2016-01-31T14:27:00+08:00</updated><author><name>李俊伟</name></author><id>tag:,2016-01-31:pages/2016/01/31/Flask部署.html</id><summary type="html">&lt;h2&gt;前言&lt;/h2&gt;
+&lt;p&gt;开发完公司的数据库自动化平台，接下来就是要部署测试，之前没真正部署过，这次正好学习了，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。&lt;/p&gt;
+&lt;h2&gt;配置Python虚拟环境&lt;/h2&gt;
+&lt;p&gt;先安装Python2.7  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
+tar -jxvf Python-2.7.tar.bz2   
+cd Python-2.7
+./configure  后面可以加上你希望安装的路径 比如 --prefix=/usr/local ，默认是/usr/local   
+make &amp;amp; make install   
+make clean &amp;amp; make distclean
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;安装pip，virtualenv &lt;br /&gt;
+因为系统默认是python2.6的，所以通过yum安装的pip会默认装到2.6的目录下，而且yum还依赖2.6，所以如果直接修改系统默认的python版本会导致无法使用yum，因此我通过distribute的方式安装easy_install继而安装pip。   &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;wget https://pypi.python.org/packages/source/d/distribute/distribute-0.6.49.tar.gz      
+python distribute_setup.py #注意这里的python一定是你python2.7的路径下的python      
+mkdir myproject   
+cd myproject   
+virtualenv venv
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;安装需要的包   &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;pip install -r requirements.txt #requirements.txt中记录了项目用到的所有包
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;安装gunicorn  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;pip install gunicorn
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;安装supervisor&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;pip install supervisor
+pip freeze &amp;gt; requirements.txt
+每次pip安装了新的库之后都要freeze一次，这是个好习惯
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;配置supervisor&lt;/h2&gt;
+&lt;p&gt;supervisor是基于Python的进程管理工具，可以用守护进程的方式执行程序。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;echo_supervisord_conf &amp;gt; supervisor.conf   # 生成 supervisor 默认配置文件
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;这个文件放在哪里都可以，只要你执行supervisor的时候指定它就可以，但还是建议放到/etc下，这样好管理，在生成的默认配置文件底部有一个
+include选项，用来包含要管理的程序的supervisor配置文件。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;[include]      
+files = /home/junweil/my_etc/supervisor/conf.d/*.conf
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;下面是gunicorn的配置，命名为*.conf,放在supervisor/conf.d里面，我们应用的gunicorn，celery等程序的启动配置就应该放在          supervisor/conf.d中。  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="k"&gt;[program:wsgi]&lt;/span&gt;
+&lt;span class="na"&gt;command&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/myproject/venv/bin/python/gunicorn -w 4 -b 0.0.0.0:5500 wsgi:app&lt;/span&gt;
+&lt;span class="na"&gt;directory&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/myproject&lt;/span&gt;
+&lt;span class="na"&gt;startsecs&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;0&lt;/span&gt;
+&lt;span class="na"&gt;stopwaitsecs&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;0&lt;/span&gt;
+&lt;span class="na"&gt;autostart&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;false&lt;/span&gt;
+&lt;span class="na"&gt;autorestart&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;false&lt;/span&gt;
+&lt;span class="na"&gt;stdout_logfile&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/my_log/gunicorn/gunicorn.log&lt;/span&gt;
+&lt;span class="na"&gt;stderr_logfile&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/my_log/gunicorn/gunicorn.err&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;下面是celery的配置，同gunicorn一样，我们的项目用到celery做异步任务的调度，如果不需要用到的可以忽略 &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="k"&gt;[program:celery]&lt;/span&gt;
+&lt;span class="na"&gt;command&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/myproject/venv/bin/python/celery worker -A app.celery --loglevel=info --beat&lt;/span&gt;
+&lt;span class="na"&gt;environment&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;PYTHONPATH=/home/myproject&lt;/span&gt;
+&lt;span class="na"&gt;directory&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/myproject&lt;/span&gt;
+&lt;span class="na"&gt;user&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;junweil&lt;/span&gt;
+&lt;span class="na"&gt;stdout_logfile&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/my_log/celery/celeryd.log&lt;/span&gt;
+&lt;span class="na"&gt;stderr_logfile&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/my_log/celery/celeryd.err&lt;/span&gt;
+&lt;span class="na"&gt;autostart&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;true&lt;/span&gt;
+&lt;span class="na"&gt;autorestart&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;true&lt;/span&gt;
+&lt;span class="na"&gt;startsecs&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;10&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;安装nginx&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;CentOS yum install nginx
+Ubuntu apt-get install nginx
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;配置nginx，nginx主要用到了它的反向代理，详细配置就不列出来了。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;    &lt;span class="nt"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="n"&gt;listen&lt;/span&gt;   &lt;span class="m"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="n"&gt;root&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;home&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;myproject&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;app&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="n"&gt;server_name&lt;/span&gt; &lt;span class="o"&gt;*****&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="n"&gt;location&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="err"&gt;{&lt;/span&gt;
+            &lt;span class="n"&gt;proxy_pass&lt;/span&gt;  &lt;span class="n"&gt;http&lt;/span&gt;&lt;span class="o"&gt;://&lt;/span&gt;&lt;span class="m"&gt;127&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="m"&gt;5500&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="err"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;启动supervisor和nginx&lt;/h2&gt;
+&lt;p&gt;运行命令&lt;code&gt;supervisord -c supervisor.conf&lt;/code&gt;启动supervisor，这样刚才配置的gunicorn和celery就会以守护进程的方式运行起来。 &lt;br /&gt;
+supervisor相关命令  &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;supervisord -c supervisor.conf                          通过配置文件启动supervisor
+supervisorctl -c supervisor.conf status                 察看supervisor的状态
+supervisorctl -c supervisor.conf reload                 重新载入 配置文件
+supervisorctl -c supervisor.conf start [all]|[appname]  启动指定/所有 supervisor管理的程序进程
+supervisorctl -c supervisor.conf stop [all]|[appname]   关闭指定/所有 supervisor管理的程序进程
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;启动nginx&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;nginx -c /etc/nginx/nginx.conf
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;nginx相关命令&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;nginx -t 验证配置文件是否正确
+nginx -s reload 重新载入配置文件，并重启
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;在服务器上是nginx1.8版本的，我在自己虚拟机上实验的时候用的nginx1.9版本只要把配置文件放到sites-available文件夹中，并在sites-enabled中建立软连接指向sites-available文件夹中对应的配置文件即可。然后直接service nginx restart或/etc/init.d/nginx start&lt;/p&gt;
+&lt;h2&gt;flask启动文件 wsgi.py&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="c"&gt;# coding: utf-8&lt;/span&gt;
+
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;app&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;create_app&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;db&lt;/span&gt;
+&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;flask&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;render_template&lt;/span&gt;
+
+&lt;span class="n"&gt;app&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;create_app&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+
+&lt;span class="nd"&gt;@app.errorhandler&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;404&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;not_found&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;error&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;render_template&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;error/404.html&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;404&lt;/span&gt;
+
+
+&lt;span class="nd"&gt;@app.errorhandler&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;500&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;not_found&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;error&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;render_template&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;error/500.html&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;500&lt;/span&gt;
+
+
+&lt;span class="nd"&gt;@app.teardown_request&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;shutdown_session&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;exception&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;db&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;session&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;remove&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+
+&lt;span class="nd"&gt;@app.teardown_appcontext&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;shutdown_session&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;exception&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="bp"&gt;None&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;db&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;session&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;remove&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+
+
+&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;__name__&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;__main__&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+    &lt;span class="n"&gt;app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;run&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;</summary><category term="Python"></category><category term="Flask"></category></entry></feed>
