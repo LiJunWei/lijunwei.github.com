@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>李俊伟-随笔</title><link href="/" rel="alternate"></link><link href="/feeds/all-zh.atom.xml" rel="self"></link><id>/</id><updated>2016-01-31T14:27:00+08:00</updated><entry><title>Flask部署</title><link href="/pages/2016/01/31/Flask%E9%83%A8%E7%BD%B2.html" rel="alternate"></link><updated>2016-01-31T14:27:00+08:00</updated><author><name>李俊伟</name></author><id>tag:,2016-01-31:pages/2016/01/31/Flask部署.html</id><summary type="html">&lt;h2&gt;前言&lt;/h2&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>李俊伟-随笔</title><link href="/" rel="alternate"></link><link href="/feeds/all-zh.atom.xml" rel="self"></link><id>/</id><updated>2016-04-03T18:43:00+08:00</updated><entry><title>Ansible问题总结</title><link href="/pages/2016/04/03/Ansible%E9%97%AE%E9%A2%98%E6%80%BB%E7%BB%93.html" rel="alternate"></link><updated>2016-04-03T18:43:00+08:00</updated><author><name>李俊伟</name></author><id>tag:,2016-04-03:pages/2016/04/03/Ansible问题总结.html</id><summary type="html">&lt;h2&gt;问题描述&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="n"&gt;paramiko&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;The&lt;/span&gt; &lt;span class="n"&gt;authenticity&lt;/span&gt; &lt;span class="n"&gt;of&lt;/span&gt; &lt;span class="n"&gt;host&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;[*.*.*.*]:8822&amp;#39;&lt;/span&gt; &lt;span class="n"&gt;can&lt;/span&gt;&lt;span class="err"&gt;&amp;#39;&lt;/span&gt;&lt;span class="n"&gt;t&lt;/span&gt; &lt;span class="n"&gt;be&lt;/span&gt; &lt;span class="n"&gt;established&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
+&lt;span class="n"&gt;The&lt;/span&gt; &lt;span class="n"&gt;ssh&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;rsa&lt;/span&gt; &lt;span class="n"&gt;key&lt;/span&gt; &lt;span class="n"&gt;fingerprint&lt;/span&gt; &lt;span class="k"&gt;is&lt;/span&gt; &lt;span class="n"&gt;f22cae7f4b39a92d4a38f97b9102a57e&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
+&lt;span class="n"&gt;Are&lt;/span&gt; &lt;span class="n"&gt;you&lt;/span&gt; &lt;span class="n"&gt;sure&lt;/span&gt; &lt;span class="n"&gt;you&lt;/span&gt; &lt;span class="n"&gt;want&lt;/span&gt; &lt;span class="n"&gt;to&lt;/span&gt; &lt;span class="k"&gt;continue&lt;/span&gt; &lt;span class="n"&gt;connecting&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;yes&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;no&lt;/span&gt;&lt;span class="o"&gt;)?&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;用ansible去管理一台新机器时遇到了上面的问题，需要输入yes交互才能继续执行命令，因为这样的问题导致批量执行的任务有些没有执行。
+解决办法也很简单&lt;/p&gt;
+&lt;p&gt;修改ansible.cfg文件中的&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;#host_key_checking = False   关闭第一次使用ansible连接客户端是输入命令提示
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;默认是有注释的，去掉注释就行。&lt;/p&gt;</summary><category term="自动化"></category></entry><entry><title>Flask部署</title><link href="/pages/2016/01/31/Flask%E9%83%A8%E7%BD%B2.html" rel="alternate"></link><updated>2016-01-31T14:27:00+08:00</updated><author><name>李俊伟</name></author><id>tag:,2016-01-31:pages/2016/01/31/Flask部署.html</id><summary type="html">&lt;h2&gt;前言&lt;/h2&gt;
 &lt;p&gt;开发完公司的数据库自动化平台，接下来就是要部署测试，之前没真正部署过，这次正好学习了，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。&lt;/p&gt;
 &lt;h2&gt;配置Python虚拟环境&lt;/h2&gt;
 &lt;p&gt;先安装Python2.7  &lt;/p&gt;
