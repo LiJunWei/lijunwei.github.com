@@ -1,5 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>李俊伟-随笔</title><link href="/" rel="alternate"></link><link href="/feeds/all.atom.xml" rel="self"></link><id>/</id><updated>2016-04-03T18:43:00+08:00</updated><entry><title>Ansible问题总结</title><link href="/pages/2016/04/03/Ansible%E9%97%AE%E9%A2%98%E6%80%BB%E7%BB%93.html" rel="alternate"></link><updated>2016-04-03T18:43:00+08:00</updated><author><name>李俊伟</name></author><id>tag:,2016-04-03:pages/2016/04/03/Ansible问题总结.html</id><summary type="html">&lt;h2&gt;问题描述&lt;/h2&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>李俊伟-随笔</title><link href="/" rel="alternate"></link><link href="/feeds/all.atom.xml" rel="self"></link><id>/</id><updated>2016-05-08T13:55:00+08:00</updated><entry><title>使用Celery踩过的坑</title><link href="/pages/2016/05/08/%E4%BD%BF%E7%94%A8Celery%E8%B8%A9%E8%BF%87%E7%9A%84%E5%9D%91.html" rel="alternate"></link><updated>2016-05-08T13:55:00+08:00</updated><author><name>李俊伟</name></author><id>tag:,2016-05-08:pages/2016/05/08/使用Celery踩过的坑.html</id><summary type="html">&lt;h2&gt;为什么要使用celery&lt;/h2&gt;
+&lt;p&gt;Celery是一个使用Python开发的分布式任务调度模块，因此对于大量使用Python构建的系统，可以说是无缝衔接，使用起来很方便。Celery专注于实时处理任务，同时也支持任务的定时调度。因此适合实时异步任务定时任务等调度场景。Celery需要依靠RabbitMQ等作为消息代理，同时也支持Redis甚至是Mysql，Mongo等，当然，官方默认推荐的是RabbitMQ。&lt;/p&gt;
+&lt;h2&gt;broker的选择&lt;/h2&gt;
+&lt;p&gt;虽然官方支持的broker有很多，包括RabbitMQ，Redis甚至是数据库，但是不推荐使用数据库，因为数据库需要不断访问磁盘，当你的任务量大了之后会造成很严重的性能问题，同时你的应用很可能也在使用同一个数据库，这样可能导致你的应用被拖垮。如果业务环境比较简单可以选择Redis，如果比较复杂选择RabbitMQ，因为RabbitMQ是官方推荐的，但是比Redis操作起来又相对复杂些。我的选择是broker用RabbitMQ，backend用Redis&lt;/p&gt;
+&lt;h2&gt;celery不能用root用户启动问题 C_FORCE_ROOT environment&lt;/h2&gt;
+&lt;p&gt;如果使用root用户启动celery会遇到下面的问题&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;Running a worker with superuser privileges when the
+worker accepts messages serialized with pickle is a very bad idea!
+If you really want to continue then you have to set the C_FORCE_ROOT
+environment variable (but please think about this before you do).
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;解决办法：&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Celery&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;platforms&lt;/span&gt;
+
+&lt;span class="n"&gt;platforms&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;C_FORCE_ROOT&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;True&lt;/span&gt;  &lt;span class="c"&gt;#加上这一行&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;任务重复执行&lt;/h2&gt;
+&lt;p&gt;celery执行定时任务的时候遇到了重复执行的问题，当时是用redis做broker和backend。
+&lt;a href="http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html"&gt;官方文档&lt;/a&gt;中有相关描述。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;If a task is not acknowledged within the Visibility Timeout the task will 
+be redelivered to another worker and executed.&lt;/p&gt;
+&lt;p&gt;This causes problems with ETA/countdown/retry tasks where the time to execute exceeds the visibility timeout; in fact if that happens it will be executed again, and again in a loop.&lt;/p&gt;
+&lt;p&gt;So you have to increase the visibility timeout to match the time of the longest ETA you are planning to use.&lt;/p&gt;
+&lt;p&gt;Note that Celery will redeliver messages at worker shutdown, so having a long visibility timeout will only delay the redelivery of ‘lost’ tasks in the event of a power failure or forcefully terminated workers.&lt;/p&gt;
+&lt;p&gt;Periodic tasks will not be affected by the visibility timeout, as this is a concept separate from ETA/countdown.&lt;/p&gt;
+&lt;p&gt;You can increase this timeout by configuring a transport option with the same name:&lt;/p&gt;
+&lt;p&gt;BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 43200}&lt;/p&gt;
+&lt;p&gt;The value must be an int describing the number of seconds.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;就是说当我们设置一个ETA时间比visibility_timeout长的任务时，每过一次 visibility_timeout 时间，celery就会认为这个任务没被worker执行成功，重新分配给其它worker再执行。
+解决办法就是把 visibility_timeout参数调大，比我们ETA的时间差要大。celery本身的定位就主要是实时的异步队列，对于这种长时间定时执行，支持不太好。
+但是第二天依然重复执行了。。。&lt;/p&gt;
+&lt;p&gt;最后我的解决方法是在每次定时任务执行完就在redis中写入一个唯一的key对应一个时间戳，当下次任务执行前去获取redis中的这个key对应的value值，和当前的时间做比较，当满足我们的定时频率要求时才执行，这样保证了同一个任务在规定的时间内只会执行一次。&lt;/p&gt;
+&lt;h2&gt;使用不同的queue&lt;/h2&gt;
+&lt;p&gt;当你有很多任务需要执行的时候，不要偷懒只使用默认的queue，这样会相互影响，并且拖慢任务执行的，导致重要的任务不能被快速的执行。鸡蛋不能放在同一个篮子里的道理大家都懂。
+有一种简单的方式设置queue&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Automatic routing&lt;/p&gt;
+&lt;p&gt;The simplest way to do routing is to use the CELERY_CREATE_MISSING_QUEUES setting (on by default).&lt;/p&gt;
+&lt;p&gt;With this setting on, a named queue that is not already defined in CELERY_QUEUES will be created automatically. This makes it easy to perform simple routing tasks.&lt;/p&gt;
+&lt;p&gt;Say you have two servers, x, and y that handles regular tasks, and one server z, that only handles feed related tasks. You can use this configuration:&lt;/p&gt;
+&lt;p&gt;CELERY_ROUTES = {'feed.tasks.import_feed': {'queue': 'feeds'}}&lt;/p&gt;
+&lt;p&gt;With this route enabled import feed tasks will be routed to the “feeds” queue, while all other tasks will be routed to the default queue (named “celery” for historical reasons).&lt;/p&gt;
+&lt;p&gt;Now you can start server z to only process the feeds queue like this:&lt;/p&gt;
+&lt;p&gt;user@z:/$ celery -A proj worker -Q feeds&lt;/p&gt;
+&lt;p&gt;You can specify as many queues as you want, so you can make this server process the default queue as well:&lt;/p&gt;
+&lt;p&gt;user@z:/$ celery -A proj worker -Q feeds,celery&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;直接使用&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;CELERY_ROUTES = {&amp;#39;feed.tasks.import_feed&amp;#39;: {&amp;#39;queue&amp;#39;: &amp;#39;feeds&amp;#39;}}
+user@z:/$ celery -A proj worker -Q feeds,celery
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;指定routes,就会自动生成对应的queue，然后使用-Q指定queue启动celery就可以，默认的queue名字是celery。可以看&lt;a href="http://docs.celeryproject.org/en/latest/userguide/routing.html#automatic-routing"&gt;官方文档&lt;/a&gt;对默认queue的名字进行修改。&lt;/p&gt;
+&lt;h2&gt;启动多个workers执行不同的任务&lt;/h2&gt;
+&lt;p&gt;在同一台机器上，对于优先级不同的任务最好启动不同的worker去执行，比如把实时任务和定时任务分开，把执行频率高的任务和执行频率低的任务分开，这样有利于保证高优先级的任务可以得到更多的系统资源，同时高频率的实时任务日志比较多也会影响实时任务的日志查看，分开就可以记录到不同的日志文件，方便查看。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="nv"&gt;$ &lt;/span&gt;celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker1.%h
+&lt;span class="nv"&gt;$ &lt;/span&gt;celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker2.%h
+&lt;span class="nv"&gt;$ &lt;/span&gt;celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker3.%h
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;可以像这样启动不同的worker，%h可以指定hostname，详细说明可以查看&lt;a href="http://docs.celeryproject.org/en/latest/userguide/workers.html"&gt;官方文档&lt;/a&gt;
+高优先级的任务可以分配更多的concurrency，但是并不是worker并法数越多越好，保证任务不堆积就好。&lt;/p&gt;
+&lt;h2&gt;是否需要关注任务执行状态&lt;/h2&gt;
+&lt;p&gt;这个要视具体的业务场景来看，如果对结果不关心，或者任务的执行本身会对数据产生影响，通过对数据的判断可以知道执行的结果那就不需要返回celery任务的退出状态，可以设置&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;CELERY_IGNORE_RESULT = True
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;或者&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;@app.task(ignore_result=True)
+def mytask(…):
+    something()
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;但是，如果业务需要根据任务执行的状态进行响应的处理就不要这样设置。&lt;/p&gt;
+&lt;h2&gt;内存泄漏&lt;/h2&gt;
+&lt;p&gt;长时间运行Celery有可能发生内存泄露，可以像下面这样设置&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;CELERYD_MAX_TASKS_PER_CHILD = 40 # 每个worker执行了多少任务就会死掉
+&lt;/pre&gt;&lt;/div&gt;</summary><category term="Celery"></category></entry><entry><title>Ansible问题总结</title><link href="/pages/2016/04/03/Ansible%E9%97%AE%E9%A2%98%E6%80%BB%E7%BB%93.html" rel="alternate"></link><updated>2016-04-03T18:43:00+08:00</updated><author><name>李俊伟</name></author><id>tag:,2016-04-03:pages/2016/04/03/Ansible问题总结.html</id><summary type="html">&lt;h2&gt;问题描述&lt;/h2&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="n"&gt;paramiko&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;The&lt;/span&gt; &lt;span class="n"&gt;authenticity&lt;/span&gt; &lt;span class="n"&gt;of&lt;/span&gt; &lt;span class="n"&gt;host&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;[*.*.*.*]:8822&amp;#39;&lt;/span&gt; &lt;span class="n"&gt;can&lt;/span&gt;&lt;span class="err"&gt;&amp;#39;&lt;/span&gt;&lt;span class="n"&gt;t&lt;/span&gt; &lt;span class="n"&gt;be&lt;/span&gt; &lt;span class="n"&gt;established&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
 &lt;span class="n"&gt;The&lt;/span&gt; &lt;span class="n"&gt;ssh&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;rsa&lt;/span&gt; &lt;span class="n"&gt;key&lt;/span&gt; &lt;span class="n"&gt;fingerprint&lt;/span&gt; &lt;span class="k"&gt;is&lt;/span&gt; &lt;span class="n"&gt;f22cae7f4b39a92d4a38f97b9102a57e&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
 &lt;span class="n"&gt;Are&lt;/span&gt; &lt;span class="n"&gt;you&lt;/span&gt; &lt;span class="n"&gt;sure&lt;/span&gt; &lt;span class="n"&gt;you&lt;/span&gt; &lt;span class="n"&gt;want&lt;/span&gt; &lt;span class="n"&gt;to&lt;/span&gt; &lt;span class="k"&gt;continue&lt;/span&gt; &lt;span class="n"&gt;connecting&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;yes&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;no&lt;/span&gt;&lt;span class="o"&gt;)?&lt;/span&gt;
@@ -14,7 +101,7 @@
 
 
 &lt;p&gt;默认是有注释的，去掉注释就行。&lt;/p&gt;</summary><category term="自动化"></category></entry><entry><title>Flask部署</title><link href="/pages/2016/01/31/Flask%E9%83%A8%E7%BD%B2.html" rel="alternate"></link><updated>2016-01-31T14:27:00+08:00</updated><author><name>李俊伟</name></author><id>tag:,2016-01-31:pages/2016/01/31/Flask部署.html</id><summary type="html">&lt;h2&gt;前言&lt;/h2&gt;
-&lt;p&gt;开发完公司的数据库自动化平台，接下来就是要部署测试，之前没真正部署过，这次正好学习了，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。&lt;/p&gt;
+&lt;p&gt;开发完Flask的项目，接下来就是要部署测试，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。&lt;/p&gt;
 &lt;h2&gt;配置Python虚拟环境&lt;/h2&gt;
 &lt;p&gt;先安装Python2.7  &lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
