@@ -62,13 +62,22 @@
     <div class='article'>
         <div class="content-title">
             <a href="http://lijunwei.github.io/pages/2016/01/31/Flask部署.html"><h1>Flask部署</h1></a>
-2016-01-31
+            <div class= "well small"> 2016-01-31
 
 by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李俊伟</a>
  
 
 
- 
+ </div>
+            <div class="summary"><h2>前言</h2>
+<p>开发完公司的数据库自动化平台，接下来就是要部署测试，之前没真正部署过，这次正好学习了，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。</p>
+<h2>配置Python虚拟环境</h2>
+<p>先安装Python2.7  </p>
+<div class="highlight"><pre><span></span>wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
+tar -jxvf Python-2.7.tar.bz2   
+cd Python-2.7
+./configure  后面可以加上你希望安装的路径 比如 --prefix=/usr/local ，默认是/usr/local   
+make &amp; make install ...</pre></div> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/01/31/Flask部署.html">read more</a></div>
         </div>
         
         <hr />
