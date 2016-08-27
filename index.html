@@ -61,8 +61,8 @@
 
     <div class='article'>
         <div class="content-title">
-            <a href="http://lijunwei.github.io/pages/2016/05/08/使用Celery踩过的坑.html"><h1>使用Celery踩过的坑</h1></a>
-2016-05-08
+            <a href="http://lijunwei.github.io/pages/2016/08/27/WebSocket使用初探(Tornado+Nginx).html"><h1>WebSocket使用初探(Tornado+Nginx)</h1></a>
+2016-08-27
 
 by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李俊伟</a>
  
@@ -71,97 +71,93 @@ by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李
  
         </div>
         
-        <div><h2>为什么要使用celery</h2>
-<p>Celery是一个使用Python开发的分布式任务调度模块，因此对于大量使用Python构建的系统，可以说是无缝衔接，使用起来很方便。Celery专注于实时处理任务，同时也支持任务的定时调度。因此适合实时异步任务定时任务等调度场景。Celery需要依靠RabbitMQ等作为消息代理，同时也支持Redis甚至是Mysql，Mongo等，当然，官方默认推荐的是RabbitMQ。</p>
-<h2>broker的选择</h2>
-<p>虽然官方支持的broker有很多，包括RabbitMQ，Redis甚至是数据库，但是不推荐使用数据库，因为数据库需要不断访问磁盘，当你的任务量大了之后会造成很严重的性能问题，同时你的应用很可能也在使用同一个数据库，这样可能导致你的应用被拖垮。如果业务环境比较简单可以选择Redis，如果比较复杂选择RabbitMQ，因为RabbitMQ是官方推荐的，但是比Redis操作起来又相对复杂些。我的选择是broker用RabbitMQ，backend用Redis</p>
-<h2>celery不能用root用户启动问题 C_FORCE_ROOT environment</h2>
-<p>如果使用root用户启动celery会遇到下面的问题</p>
-<div class="highlight"><pre>Running a worker with superuser privileges when the
-worker accepts messages serialized with pickle is a very bad idea!
-If you really want to continue then you have to set the C_FORCE_ROOT
-environment variable (but please think about this before you do).
+        <div><h2>使用场景</h2>
+<p>在web开发中有时候需要实时获取数据，可以采用的方法也很多，比如ajax轮询，长连接等。之前项目中有一个需求是实时的日志展示，实时性要求高
+还有根据历史监控数据进行趋势图的绘制，数据量巨大，等待时间长。那么如果使用http请求来处理则面临着超时的问题，如果用ajax频繁的轮询将对服务器
+造成很大的压力。websocket提供了客户端和服务器进行双向实时的全双工通信的方法。并且绝大多数现代浏览器都支持websocket，因此需要使用
+nginx对websocket服务进行反代和负载均衡，nginx从1.3版本后开始支持websocket。项目用到的tornado框架也原生支持websocket，看来可以尝试
+用websocket来尝试解决问题。</p>
+<h2>Tornado的支持</h2>
+<p>tornado对websocket支持的很好，通过继承tornado.websocket.WebSocketHandler类就可以实现对websocket连接的处理。websocket是在标准
+http上实现的，websocket中的握手和http中的握手兼容，它使用http中的Upgrade协议头将连接从http升级到WebSocket,从源码上可以看出
+WebSocketHandler继承了tornado.web.RequestHandler，因此websocket也可以通过get_argument方法获取ws://URL?**=传来的参数。
+WebSocketHandler提供了一系列方法用以处理连接和消息收发，源码中的docstring描述得很清楚，源码是最好的文档没有之一。</p>
+<div class="highlight"><pre><span></span><span class="k">class</span> <span class="n">WebSocketHandler</span>(<span class="n">tornado</span>.<span class="n">web</span>.<span class="n">RequestHandler</span>):
+<span class="s">&quot;&quot;&quot;Subclass this class to create a basic WebSocket handler.</span>
+
+<span class="s">Override `on_message` to handle incoming messages, and use</span>
+<span class="s">`write_message` to send messages to the client. You can also</span>
+<span class="s">override `open` and `on_close` to handle opened and closed</span>
+<span class="s">connections.</span>
+
+<span class="s">See http://dev.w3.org/html5/websockets/ for details on the</span>
+<span class="s">JavaScript interface.  The protocol is specified at</span>
+<span class="s">http://tools.ietf.org/html/rfc6455.</span>
+
+<span class="s">Here is an example WebSocket handler that echos back all received messages</span>
+<span class="s">back to the client:</span>
+
+<span class="s">.. testcode::</span>
+
+<span class="s">  class EchoWebSocket(tornado.websocket.WebSocketHandler):</span>
+<span class="s">      def open(self):</span>
+<span class="s">          print(&quot;</span><span class="n">WebSocket</span> <span class="n">opened</span><span class="s">&quot;)</span>
+
+<span class="s">      def on_message(self, message):</span>
+<span class="s">          self.write_message(u&quot;</span><span class="n">You</span> <span class="n">said:</span> <span class="s">&quot; + message)</span>
+
+<span class="s">      def on_close(self):</span>
+<span class="s">          print(&quot;</span><span class="n">WebSocket</span> <span class="n">closed</span>&quot;)
+
+.. <span class="n">testoutput::</span>
+   :<span class="n">hide:</span>
+
+...
 </pre></div>
 
 
-<p>解决办法：</p>
-<div class="highlight"><pre><span class="kn">from</span> <span class="nn">celery</span> <span class="kn">import</span> <span class="n">Celery</span><span class="p">,</span> <span class="n">platforms</span>
+<h2>Nginx配置反向代理和负载均衡</h2>
+<div class="highlight"><pre><span></span><span class="nt">upstream</span> <span class="nt">tornadoes</span> <span class="p">{</span>
+    <span class="n">server</span> <span class="m">127</span><span class="o">.</span><span class="m">0</span><span class="o">.</span><span class="m">0</span><span class="o">.</span><span class="m">1</span><span class="o">:</span><span class="m">7000</span><span class="p">;</span>
+    <span class="n">server</span> <span class="m">127</span><span class="o">.</span><span class="m">0</span><span class="o">.</span><span class="m">0</span><span class="o">.</span><span class="m">1</span><span class="o">:</span><span class="m">7001</span><span class="p">;</span>
+<span class="p">}</span>
 
-<span class="n">platforms</span><span class="o">.</span><span class="n">C_FORCE_ROOT</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c">#加上这一行</span>
+<span class="nt">server</span> <span class="p">{</span>
+    <span class="n">listen</span> <span class="m">8000</span><span class="p">;</span>
+    <span class="n">server_name</span> <span class="o">***.</span><span class="n">com</span><span class="p">;</span>
+
+    <span class="n">location</span> <span class="o">/</span> <span class="err">{</span>
+        <span class="n">proxy_pass</span> <span class="n">http</span><span class="o">://</span><span class="n">tornadoes</span><span class="p">;</span>
+        <span class="n">proxy_http_version</span> <span class="m">1</span><span class="o">.</span><span class="m">1</span><span class="p">;</span>
+        <span class="n">proxy_set_header</span> <span class="n">Upgrade</span> <span class="err">$</span><span class="n">http_upgrade</span><span class="p">;</span>
+        <span class="n">proxy_set_header</span> <span class="n">Connection</span> <span class="s2">&quot;Upgrade&quot;</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="err">}</span>
 </pre></div>
 
 
-<h2>任务重复执行</h2>
-<p>celery执行定时任务的时候遇到了重复执行的问题，当时是用redis做broker和backend。
-<a href="http://docs.celeryproject.org/en/latest/getting-started/brokers/redis.html">官方文档</a>中有相关描述。</p>
-<blockquote>
-<p>If a task is not acknowledged within the Visibility Timeout the task will 
-be redelivered to another worker and executed.</p>
-<p>This causes problems with ETA/countdown/retry tasks where the time to execute exceeds the visibility timeout; in fact if that happens it will be executed again, and again in a loop.</p>
-<p>So you have to increase the visibility timeout to match the time of the longest ETA you are planning to use.</p>
-<p>Note that Celery will redeliver messages at worker shutdown, so having a long visibility timeout will only delay the redelivery of ‘lost’ tasks in the event of a power failure or forcefully terminated workers.</p>
-<p>Periodic tasks will not be affected by the visibility timeout, as this is a concept separate from ETA/countdown.</p>
-<p>You can increase this timeout by configuring a transport option with the same name:</p>
-<p>BROKER_TRANSPORT_OPTIONS = {'visibility_timeout': 43200}</p>
-<p>The value must be an int describing the number of seconds.</p>
-</blockquote>
-<p>就是说当我们设置一个ETA时间比visibility_timeout长的任务时，每过一次 visibility_timeout 时间，celery就会认为这个任务没被worker执行成功，重新分配给其它worker再执行。
-解决办法就是把 visibility_timeout参数调大，比我们ETA的时间差要大。celery本身的定位就主要是实时的异步队列，对于这种长时间定时执行，支持不太好。
-但是第二天依然重复执行了。。。</p>
-<p>最后我的解决方法是在每次定时任务执行完就在redis中写入一个唯一的key对应一个时间戳，当下次任务执行前去获取redis中的这个key对应的value值，和当前的时间做比较，当满足我们的定时频率要求时才执行，这样保证了同一个任务在规定的时间内只会执行一次。</p>
-<h2>使用不同的queue</h2>
-<p>当你有很多任务需要执行的时候，不要偷懒只使用默认的queue，这样会相互影响，并且拖慢任务执行的，导致重要的任务不能被快速的执行。鸡蛋不能放在同一个篮子里的道理大家都懂。
-有一种简单的方式设置queue</p>
-<blockquote>
-<p>Automatic routing</p>
-<p>The simplest way to do routing is to use the CELERY_CREATE_MISSING_QUEUES setting (on by default).</p>
-<p>With this setting on, a named queue that is not already defined in CELERY_QUEUES will be created automatically. This makes it easy to perform simple routing tasks.</p>
-<p>Say you have two servers, x, and y that handles regular tasks, and one server z, that only handles feed related tasks. You can use this configuration:</p>
-<p>CELERY_ROUTES = {'feed.tasks.import_feed': {'queue': 'feeds'}}</p>
-<p>With this route enabled import feed tasks will be routed to the “feeds” queue, while all other tasks will be routed to the default queue (named “celery” for historical reasons).</p>
-<p>Now you can start server z to only process the feeds queue like this:</p>
-<p>user@z:/$ celery -A proj worker -Q feeds</p>
-<p>You can specify as many queues as you want, so you can make this server process the default queue as well:</p>
-<p>user@z:/$ celery -A proj worker -Q feeds,celery</p>
-</blockquote>
-<p>直接使用</p>
-<div class="highlight"><pre>CELERY_ROUTES = {&#39;feed.tasks.import_feed&#39;: {&#39;queue&#39;: &#39;feeds&#39;}}
-user@z:/$ celery -A proj worker -Q feeds,celery
-</pre></div>
-
-
-<p>指定routes,就会自动生成对应的queue，然后使用-Q指定queue启动celery就可以，默认的queue名字是celery。可以看<a href="http://docs.celeryproject.org/en/latest/userguide/routing.html#automatic-routing">官方文档</a>对默认queue的名字进行修改。</p>
-<h2>启动多个workers执行不同的任务</h2>
-<p>在同一台机器上，对于优先级不同的任务最好启动不同的worker去执行，比如把实时任务和定时任务分开，把执行频率高的任务和执行频率低的任务分开，这样有利于保证高优先级的任务可以得到更多的系统资源，同时高频率的实时任务日志比较多也会影响实时任务的日志查看，分开就可以记录到不同的日志文件，方便查看。</p>
-<div class="highlight"><pre><span class="nv">$ </span>celery -A proj worker --loglevel<span class="o">=</span>INFO --concurrency<span class="o">=</span><span class="m">10</span> -n worker1.%h
-<span class="nv">$ </span>celery -A proj worker --loglevel<span class="o">=</span>INFO --concurrency<span class="o">=</span><span class="m">10</span> -n worker2.%h
-<span class="nv">$ </span>celery -A proj worker --loglevel<span class="o">=</span>INFO --concurrency<span class="o">=</span><span class="m">10</span> -n worker3.%h
-</pre></div>
-
-
-<p>可以像这样启动不同的worker，%h可以指定hostname，详细说明可以查看<a href="http://docs.celeryproject.org/en/latest/userguide/workers.html">官方文档</a>
-高优先级的任务可以分配更多的concurrency，但是并不是worker并法数越多越好，保证任务不堆积就好。</p>
-<h2>是否需要关注任务执行状态</h2>
-<p>这个要视具体的业务场景来看，如果对结果不关心，或者任务的执行本身会对数据产生影响，通过对数据的判断可以知道执行的结果那就不需要返回celery任务的退出状态，可以设置</p>
-<div class="highlight"><pre>CELERY_IGNORE_RESULT = True
-</pre></div>
-
-
-<p>或者</p>
-<div class="highlight"><pre>@app.task(ignore_result=True)
-def mytask(…):
-    something()
-</pre></div>
-
-
-<p>但是，如果业务需要根据任务执行的状态进行响应的处理就不要这样设置。</p>
-<h2>内存泄漏</h2>
-<p>长时间运行Celery有可能发生内存泄露，可以像下面这样设置</p>
-<div class="highlight"><pre>CELERYD_MAX_TASKS_PER_CHILD = 40 # 每个worker执行了多少任务就会死掉
-</pre></div></div>
+<p>nginx默认采用循环的方式分配请求，循环的将请求分配到upstream中定义的服务地址。location中的定义对支持websocket必不可少。</p></div>
         <hr />
     </div>
 		
+
+ 
+        
+
+ 
+
+    <div class='article'>
+        <a href="http://lijunwei.github.io/pages/2016/05/08/使用Celery踩过的坑.html"><h2>使用Celery踩过的坑</h2></a>
+        <div class= "well small"> 2016-05-08
+
+by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李俊伟</a>
+ 
+
+
+ </div>
+        <div class="summary"><p>使用Celery处理大量的异步任务，定时任务是很好的选择，可以快速水平扩展，使用简单易于维护。</p> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/05/08/使用Celery踩过的坑.html">read more</a></div>
+    </div>	
+				
 
  
         
@@ -178,7 +174,7 @@ by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李
 
  </div>
         <div class="summary"><h2>问题描述</h2>
-<div class="highlight"><pre><span class="n">paramiko</span><span class="o">:</span> <span class="n">The</span> <span class="n">authenticity</span> <span class="n">of</span> <span class="n">host</span> <span class="s1">&#39;[*.*.*.*]:8822&#39;</span> <span class="n">can</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">be</span> <span class="n">established</span><span class="o">.</span>
+<div class="highlight"><pre><span></span><span class="n">paramiko</span><span class="o">:</span> <span class="n">The</span> <span class="n">authenticity</span> <span class="n">of</span> <span class="n">host</span> <span class="s1">&#39;[*.*.*.*]:8822&#39;</span> <span class="n">can</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">be</span> <span class="n">established</span><span class="o">.</span>
 <span class="n">The</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">key</span> <span class="n">fingerprint</span> <span class="k">is</span> <span class="n">f22cae7f4b39a92d4a38f97b9102a57e</span><span class="o">.</span>
 <span class="n">Are</span> <span class="n">you</span> <span class="n">sure</span> <span class="n">you</span> <span class="n">want</span> <span class="n">to</span> <span class="k">continue</span> <span class="n">connecting</span> <span class="o">(</span><span class="n">yes</span><span class="o">/</span><span class="n">no</span><span class="o">)?</span>
 </pre></div>
@@ -187,11 +183,29 @@ by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李
 <p>用ansible去管理一台新机器时遇到了上面的问题，需要输入yes交互才能继续执行命令，因为这样的问题导致批量执行的任务有些没有执行。
 解决办法也很简单</p>
 <p>修改ansible.cfg文件中的</p>
-<div class="highlight"><pre>#host_key_checking = False   关闭第一次使用ansible连接客户端是输入命令提示
+<div class="highlight"><pre><span></span>#host_key_checking = False   关闭第一次使用ansible连接客户端是输入命令提示
 </pre></div>
 
 
 <p>默认是有注释的，去掉注释就行。</p> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/04/03/Ansible问题总结.html">read more</a></div>
+    </div>	
+				
+
+ 
+        
+
+ 
+
+    <div class='article'>
+        <a href="http://lijunwei.github.io/pages/2016/04/03/About.html"><h2>关于我</h2></a>
+        <div class= "well small"> 2016-04-03
+
+by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李俊伟</a>
+ 
+
+
+ </div>
+        <div class="summary"><p>用Python和Golang做后端，前端略懂，目前在聚美优品搬砖。</p> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/04/03/About.html">read more</a></div>
     </div>	
 				
 
@@ -210,15 +224,14 @@ by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李
 
  </div>
         <div class="summary"><h2>前言</h2>
-<p>开发完Flask的项目，接下来就是要部署测试，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。</p>
+<p>开发完公司的数据库自动化平台，接下来就是要部署测试，之前没真正部署过，这次正好学习了，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。</p>
 <h2>配置Python虚拟环境</h2>
 <p>先安装Python2.7  </p>
-<div class="highlight"><pre>wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
+<div class="highlight"><pre><span></span>wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
 tar -jxvf Python-2.7.tar.bz2   
 cd Python-2.7
 ./configure  后面可以加上你希望安装的路径 比如 --prefix=/usr/local ，默认是/usr/local   
-make &amp; make install   
-make clean ...</pre></div> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/01/31/Flask部署.html">read more</a></div>
+make &amp; make install ...</pre></div> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/01/31/Flask部署.html">read more</a></div>
     </div>	
 				
 <div class="pagination">
@@ -262,7 +275,9 @@ make clean ...</pre></div> <a class="btn btn-info xsmall" href="http://lijunwei.
                 </li>
                 
                 <li><a href="http://lijunwei.github.io/category/celery.html">Celery</a></li>
+                <li><a href="http://lijunwei.github.io/category/misc.html">misc</a></li>
                 <li><a href="http://lijunwei.github.io/category/python.html">Python</a></li>
+                <li><a href="http://lijunwei.github.io/category/websocket.html">WebSocket</a></li>
                 <li><a href="http://lijunwei.github.io/category/zi-dong-hua.html">自动化</a></li>
                    
             </ul>

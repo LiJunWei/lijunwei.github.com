@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>李俊伟-随笔</title><link>http://lijunwei.github.io/</link><description></description><atom:link href="http://lijunwei.github.io/feeds/celery.rss.xml" rel="self"></atom:link><lastBuildDate>Sun, 08 May 2016 13:55:00 +0800</lastBuildDate><item><title>使用Celery踩过的坑</title><link>http://lijunwei.github.io/pages/2016/05/08/%E4%BD%BF%E7%94%A8Celery%E8%B8%A9%E8%BF%87%E7%9A%84%E5%9D%91.html</link><description>&lt;h2&gt;为什么要使用celery&lt;/h2&gt;
+<rss version="2.0"><channel><title>李俊伟-随笔</title><link>http://lijunwei.github.io/</link><description></description><lastBuildDate>Sun, 08 May 2016 13:55:00 +0800</lastBuildDate><item><title>使用Celery踩过的坑</title><link>http://lijunwei.github.io/pages/2016/05/08/%E4%BD%BF%E7%94%A8Celery%E8%B8%A9%E8%BF%87%E7%9A%84%E5%9D%91.html</link><description>&lt;h2&gt;为什么要使用celery&lt;/h2&gt;
 &lt;p&gt;Celery是一个使用Python开发的分布式任务调度模块，因此对于大量使用Python构建的系统，可以说是无缝衔接，使用起来很方便。Celery专注于实时处理任务，同时也支持任务的定时调度。因此适合实时异步任务定时任务等调度场景。Celery需要依靠RabbitMQ等作为消息代理，同时也支持Redis甚至是Mysql，Mongo等，当然，官方默认推荐的是RabbitMQ。&lt;/p&gt;
 &lt;h2&gt;broker的选择&lt;/h2&gt;
 &lt;p&gt;虽然官方支持的broker有很多，包括RabbitMQ，Redis甚至是数据库，但是不推荐使用数据库，因为数据库需要不断访问磁盘，当你的任务量大了之后会造成很严重的性能问题，同时你的应用很可能也在使用同一个数据库，这样可能导致你的应用被拖垮。如果业务环境比较简单可以选择Redis，如果比较复杂选择RabbitMQ，因为RabbitMQ是官方推荐的，但是比Redis操作起来又相对复杂些。我的选择是broker用RabbitMQ，backend用Redis&lt;/p&gt;
 &lt;h2&gt;celery不能用root用户启动问题 C_FORCE_ROOT environment&lt;/h2&gt;
 &lt;p&gt;如果使用root用户启动celery会遇到下面的问题&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;Running a worker with superuser privileges when the
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;Running a worker with superuser privileges when the
 worker accepts messages serialized with pickle is a very bad idea!
 If you really want to continue then you have to set the C_FORCE_ROOT
 environment variable (but please think about this before you do).
@@ -13,9 +13,9 @@ environment variable (but please think about this before you do).
 
 
 &lt;p&gt;解决办法：&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Celery&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;platforms&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Celery&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;platforms&lt;/span&gt;
 
-&lt;span class="n"&gt;platforms&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;C_FORCE_ROOT&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;True&lt;/span&gt;  &lt;span class="c"&gt;#加上这一行&lt;/span&gt;
+&lt;span class="n"&gt;platforms&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;C_FORCE_ROOT&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;True&lt;/span&gt;  &lt;span class="c1"&gt;#加上这一行&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
 
 
@@ -53,7 +53,7 @@ be redelivered to another worker and executed.&lt;/p&gt;
 &lt;p&gt;user@z:/$ celery -A proj worker -Q feeds,celery&lt;/p&gt;
 &lt;/blockquote&gt;
 &lt;p&gt;直接使用&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;CELERY_ROUTES = {&amp;#39;feed.tasks.import_feed&amp;#39;: {&amp;#39;queue&amp;#39;: &amp;#39;feeds&amp;#39;}}
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;CELERY_ROUTES = {&amp;#39;feed.tasks.import_feed&amp;#39;: {&amp;#39;queue&amp;#39;: &amp;#39;feeds&amp;#39;}}
 user@z:/$ celery -A proj worker -Q feeds,celery
 &lt;/pre&gt;&lt;/div&gt;
 
@@ -61,9 +61,9 @@ user@z:/$ celery -A proj worker -Q feeds,celery
 &lt;p&gt;指定routes,就会自动生成对应的queue，然后使用-Q指定queue启动celery就可以，默认的queue名字是celery。可以看&lt;a href="http://docs.celeryproject.org/en/latest/userguide/routing.html#automatic-routing"&gt;官方文档&lt;/a&gt;对默认queue的名字进行修改。&lt;/p&gt;
 &lt;h2&gt;启动多个workers执行不同的任务&lt;/h2&gt;
 &lt;p&gt;在同一台机器上，对于优先级不同的任务最好启动不同的worker去执行，比如把实时任务和定时任务分开，把执行频率高的任务和执行频率低的任务分开，这样有利于保证高优先级的任务可以得到更多的系统资源，同时高频率的实时任务日志比较多也会影响实时任务的日志查看，分开就可以记录到不同的日志文件，方便查看。&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="nv"&gt;$ &lt;/span&gt;celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker1.%h
-&lt;span class="nv"&gt;$ &lt;/span&gt;celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker2.%h
-&lt;span class="nv"&gt;$ &lt;/span&gt;celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker3.%h
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$ celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker1.%h
+$ celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker2.%h
+$ celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker3.%h
 &lt;/pre&gt;&lt;/div&gt;
 
 
@@ -71,12 +71,12 @@ user@z:/$ celery -A proj worker -Q feeds,celery
 高优先级的任务可以分配更多的concurrency，但是并不是worker并法数越多越好，保证任务不堆积就好。&lt;/p&gt;
 &lt;h2&gt;是否需要关注任务执行状态&lt;/h2&gt;
 &lt;p&gt;这个要视具体的业务场景来看，如果对结果不关心，或者任务的执行本身会对数据产生影响，通过对数据的判断可以知道执行的结果那就不需要返回celery任务的退出状态，可以设置&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;CELERY_IGNORE_RESULT = True
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;CELERY_IGNORE_RESULT = True
 &lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;或者&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;@app.task(ignore_result=True)
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;@app.task(ignore_result=True)
 def mytask(…):
     something()
 &lt;/pre&gt;&lt;/div&gt;
@@ -85,5 +85,5 @@ def mytask(…):
 &lt;p&gt;但是，如果业务需要根据任务执行的状态进行响应的处理就不要这样设置。&lt;/p&gt;
 &lt;h2&gt;内存泄漏&lt;/h2&gt;
 &lt;p&gt;长时间运行Celery有可能发生内存泄露，可以像下面这样设置&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;CELERYD_MAX_TASKS_PER_CHILD = 40 # 每个worker执行了多少任务就会死掉
-&lt;/pre&gt;&lt;/div&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sun, 08 May 2016 13:55:00 +0800</pubDate><guid>tag:lijunwei.github.io,2016-05-08:pages/2016/05/08/使用Celery踩过的坑.html</guid><category>Celery</category></item></channel></rss>
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;CELERYD_MAX_TASKS_PER_CHILD = 40 # 每个worker执行了多少任务就会死掉
+&lt;/pre&gt;&lt;/div&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sun, 08 May 2016 13:55:00 +0800</pubDate><guid isPermaLink="false">tag:lijunwei.github.io,2016-05-08:pages/2016/05/08/使用Celery踩过的坑.html</guid><category>Celery</category></item></channel></rss>

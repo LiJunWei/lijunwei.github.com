@@ -77,7 +77,7 @@ by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李
 <p>虽然官方支持的broker有很多，包括RabbitMQ，Redis甚至是数据库，但是不推荐使用数据库，因为数据库需要不断访问磁盘，当你的任务量大了之后会造成很严重的性能问题，同时你的应用很可能也在使用同一个数据库，这样可能导致你的应用被拖垮。如果业务环境比较简单可以选择Redis，如果比较复杂选择RabbitMQ，因为RabbitMQ是官方推荐的，但是比Redis操作起来又相对复杂些。我的选择是broker用RabbitMQ，backend用Redis</p>
 <h2>celery不能用root用户启动问题 C_FORCE_ROOT environment</h2>
 <p>如果使用root用户启动celery会遇到下面的问题</p>
-<div class="highlight"><pre>Running a worker with superuser privileges when the
+<div class="highlight"><pre><span></span>Running a worker with superuser privileges when the
 worker accepts messages serialized with pickle is a very bad idea!
 If you really want to continue then you have to set the C_FORCE_ROOT
 environment variable (but please think about this before you do).
@@ -85,9 +85,9 @@ environment variable (but please think about this before you do).
 
 
 <p>解决办法：</p>
-<div class="highlight"><pre><span class="kn">from</span> <span class="nn">celery</span> <span class="kn">import</span> <span class="n">Celery</span><span class="p">,</span> <span class="n">platforms</span>
+<div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">celery</span> <span class="kn">import</span> <span class="n">Celery</span><span class="p">,</span> <span class="n">platforms</span>
 
-<span class="n">platforms</span><span class="o">.</span><span class="n">C_FORCE_ROOT</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c">#加上这一行</span>
+<span class="n">platforms</span><span class="o">.</span><span class="n">C_FORCE_ROOT</span> <span class="o">=</span> <span class="bp">True</span>  <span class="c1">#加上这一行</span>
 </pre></div>
 
 
@@ -125,7 +125,7 @@ be redelivered to another worker and executed.</p>
 <p>user@z:/$ celery -A proj worker -Q feeds,celery</p>
 </blockquote>
 <p>直接使用</p>
-<div class="highlight"><pre>CELERY_ROUTES = {&#39;feed.tasks.import_feed&#39;: {&#39;queue&#39;: &#39;feeds&#39;}}
+<div class="highlight"><pre><span></span>CELERY_ROUTES = {&#39;feed.tasks.import_feed&#39;: {&#39;queue&#39;: &#39;feeds&#39;}}
 user@z:/$ celery -A proj worker -Q feeds,celery
 </pre></div>
 
@@ -133,9 +133,9 @@ user@z:/$ celery -A proj worker -Q feeds,celery
 <p>指定routes,就会自动生成对应的queue，然后使用-Q指定queue启动celery就可以，默认的queue名字是celery。可以看<a href="http://docs.celeryproject.org/en/latest/userguide/routing.html#automatic-routing">官方文档</a>对默认queue的名字进行修改。</p>
 <h2>启动多个workers执行不同的任务</h2>
 <p>在同一台机器上，对于优先级不同的任务最好启动不同的worker去执行，比如把实时任务和定时任务分开，把执行频率高的任务和执行频率低的任务分开，这样有利于保证高优先级的任务可以得到更多的系统资源，同时高频率的实时任务日志比较多也会影响实时任务的日志查看，分开就可以记录到不同的日志文件，方便查看。</p>
-<div class="highlight"><pre><span class="nv">$ </span>celery -A proj worker --loglevel<span class="o">=</span>INFO --concurrency<span class="o">=</span><span class="m">10</span> -n worker1.%h
-<span class="nv">$ </span>celery -A proj worker --loglevel<span class="o">=</span>INFO --concurrency<span class="o">=</span><span class="m">10</span> -n worker2.%h
-<span class="nv">$ </span>celery -A proj worker --loglevel<span class="o">=</span>INFO --concurrency<span class="o">=</span><span class="m">10</span> -n worker3.%h
+<div class="highlight"><pre><span></span>$ celery -A proj worker --loglevel<span class="o">=</span>INFO --concurrency<span class="o">=</span><span class="m">10</span> -n worker1.%h
+$ celery -A proj worker --loglevel<span class="o">=</span>INFO --concurrency<span class="o">=</span><span class="m">10</span> -n worker2.%h
+$ celery -A proj worker --loglevel<span class="o">=</span>INFO --concurrency<span class="o">=</span><span class="m">10</span> -n worker3.%h
 </pre></div>
 
 
@@ -143,12 +143,12 @@ user@z:/$ celery -A proj worker -Q feeds,celery
 高优先级的任务可以分配更多的concurrency，但是并不是worker并法数越多越好，保证任务不堆积就好。</p>
 <h2>是否需要关注任务执行状态</h2>
 <p>这个要视具体的业务场景来看，如果对结果不关心，或者任务的执行本身会对数据产生影响，通过对数据的判断可以知道执行的结果那就不需要返回celery任务的退出状态，可以设置</p>
-<div class="highlight"><pre>CELERY_IGNORE_RESULT = True
+<div class="highlight"><pre><span></span>CELERY_IGNORE_RESULT = True
 </pre></div>
 
 
 <p>或者</p>
-<div class="highlight"><pre>@app.task(ignore_result=True)
+<div class="highlight"><pre><span></span>@app.task(ignore_result=True)
 def mytask(…):
     something()
 </pre></div>
@@ -157,7 +157,7 @@ def mytask(…):
 <p>但是，如果业务需要根据任务执行的状态进行响应的处理就不要这样设置。</p>
 <h2>内存泄漏</h2>
 <p>长时间运行Celery有可能发生内存泄露，可以像下面这样设置</p>
-<div class="highlight"><pre>CELERYD_MAX_TASKS_PER_CHILD = 40 # 每个worker执行了多少任务就会死掉
+<div class="highlight"><pre><span></span>CELERYD_MAX_TASKS_PER_CHILD = 40 # 每个worker执行了多少任务就会死掉
 </pre></div></div>
         <hr />
     </div>
@@ -203,7 +203,9 @@ def mytask(…):
                 </li>
                 
                 <li><a href="http://lijunwei.github.io/category/celery.html">Celery</a></li>
+                <li><a href="http://lijunwei.github.io/category/misc.html">misc</a></li>
                 <li><a href="http://lijunwei.github.io/category/python.html">Python</a></li>
+                <li><a href="http://lijunwei.github.io/category/websocket.html">WebSocket</a></li>
                 <li><a href="http://lijunwei.github.io/category/zi-dong-hua.html">自动化</a></li>
                    
             </ul>

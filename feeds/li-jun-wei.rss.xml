@@ -1,11 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>李俊伟-随笔</title><link>http://lijunwei.github.io/</link><description></description><atom:link href="http://lijunwei.github.io/feeds/li-jun-wei.rss.xml" rel="self"></atom:link><lastBuildDate>Sun, 08 May 2016 13:55:00 +0800</lastBuildDate><item><title>使用Celery踩过的坑</title><link>http://lijunwei.github.io/pages/2016/05/08/%E4%BD%BF%E7%94%A8Celery%E8%B8%A9%E8%BF%87%E7%9A%84%E5%9D%91.html</link><description>&lt;h2&gt;为什么要使用celery&lt;/h2&gt;
+<rss version="2.0"><channel><title>李俊伟-随笔</title><link>http://lijunwei.github.io/</link><description></description><lastBuildDate>Sat, 27 Aug 2016 16:52:00 +0800</lastBuildDate><item><title>WebSocket使用初探(Tornado+Nginx)</title><link>http://lijunwei.github.io/pages/2016/08/27/WebSocket%E4%BD%BF%E7%94%A8%E5%88%9D%E6%8E%A2(Tornado+Nginx).html</link><description>&lt;h2&gt;使用场景&lt;/h2&gt;
+&lt;p&gt;在web开发中有时候需要实时获取数据，可以采用的方法也很多，比如ajax轮询，长连接等。之前项目中有一个需求是实时的日志展示，实时性要求高
+还有根据历史监控数据进行趋势图的绘制，数据量巨大，等待时间长。那么如果使用http请求来处理则面临着超时的问题，如果用ajax频繁的轮询将对服务器
+造成很大的压力。websocket提供了客户端和服务器进行双向实时的全双工通信的方法。并且绝大多数现代浏览器都支持websocket，因此需要使用
+nginx对websocket服务进行反代和负载均衡，nginx从1.3版本后开始支持websocket。项目用到的tornado框架也原生支持websocket，看来可以尝试
+用websocket来尝试解决问题。&lt;/p&gt;
+&lt;h2&gt;Tornado的支持&lt;/h2&gt;
+&lt;p&gt;tornado对websocket支持的很好，通过继承tornado.websocket.WebSocketHandler类就可以实现对websocket连接的处理。websocket是在标准
+http上实现的，websocket中的握手和http中的握手兼容，它使用http中的Upgrade协议头将连接从http升级到WebSocket,从源码上可以看出
+WebSocketHandler继承了tornado.web.RequestHandler，因此websocket也可以通过get_argument方法获取ws://URL?**=传来的参数。
+WebSocketHandler提供了一系列方法用以处理连接和消息收发，源码中的docstring描述得很清楚，源码是最好的文档没有之一。&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="n"&gt;WebSocketHandler&lt;/span&gt;(&lt;span class="n"&gt;tornado&lt;/span&gt;.&lt;span class="n"&gt;web&lt;/span&gt;.&lt;span class="n"&gt;RequestHandler&lt;/span&gt;):
+&lt;span class="s"&gt;&amp;quot;&amp;quot;&amp;quot;Subclass this class to create a basic WebSocket handler.&lt;/span&gt;
+
+&lt;span class="s"&gt;Override `on_message` to handle incoming messages, and use&lt;/span&gt;
+&lt;span class="s"&gt;`write_message` to send messages to the client. You can also&lt;/span&gt;
+&lt;span class="s"&gt;override `open` and `on_close` to handle opened and closed&lt;/span&gt;
+&lt;span class="s"&gt;connections.&lt;/span&gt;
+
+&lt;span class="s"&gt;See http://dev.w3.org/html5/websockets/ for details on the&lt;/span&gt;
+&lt;span class="s"&gt;JavaScript interface.  The protocol is specified at&lt;/span&gt;
+&lt;span class="s"&gt;http://tools.ietf.org/html/rfc6455.&lt;/span&gt;
+
+&lt;span class="s"&gt;Here is an example WebSocket handler that echos back all received messages&lt;/span&gt;
+&lt;span class="s"&gt;back to the client:&lt;/span&gt;
+
+&lt;span class="s"&gt;.. testcode::&lt;/span&gt;
+
+&lt;span class="s"&gt;  class EchoWebSocket(tornado.websocket.WebSocketHandler):&lt;/span&gt;
+&lt;span class="s"&gt;      def open(self):&lt;/span&gt;
+&lt;span class="s"&gt;          print(&amp;quot;&lt;/span&gt;&lt;span class="n"&gt;WebSocket&lt;/span&gt; &lt;span class="n"&gt;opened&lt;/span&gt;&lt;span class="s"&gt;&amp;quot;)&lt;/span&gt;
+
+&lt;span class="s"&gt;      def on_message(self, message):&lt;/span&gt;
+&lt;span class="s"&gt;          self.write_message(u&amp;quot;&lt;/span&gt;&lt;span class="n"&gt;You&lt;/span&gt; &lt;span class="n"&gt;said:&lt;/span&gt; &lt;span class="s"&gt;&amp;quot; + message)&lt;/span&gt;
+
+&lt;span class="s"&gt;      def on_close(self):&lt;/span&gt;
+&lt;span class="s"&gt;          print(&amp;quot;&lt;/span&gt;&lt;span class="n"&gt;WebSocket&lt;/span&gt; &lt;span class="n"&gt;closed&lt;/span&gt;&amp;quot;)
+
+.. &lt;span class="n"&gt;testoutput::&lt;/span&gt;
+   :&lt;span class="n"&gt;hide:&lt;/span&gt;
+
+...
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;h2&gt;Nginx配置反向代理和负载均衡&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="nt"&gt;upstream&lt;/span&gt; &lt;span class="nt"&gt;tornadoes&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="n"&gt;server&lt;/span&gt; &lt;span class="m"&gt;127&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="m"&gt;7000&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="n"&gt;server&lt;/span&gt; &lt;span class="m"&gt;127&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="m"&gt;7001&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;span class="nt"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="n"&gt;listen&lt;/span&gt; &lt;span class="m"&gt;8000&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="n"&gt;server_name&lt;/span&gt; &lt;span class="o"&gt;***.&lt;/span&gt;&lt;span class="n"&gt;com&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+
+    &lt;span class="n"&gt;location&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt; &lt;span class="err"&gt;{&lt;/span&gt;
+        &lt;span class="n"&gt;proxy_pass&lt;/span&gt; &lt;span class="n"&gt;http&lt;/span&gt;&lt;span class="o"&gt;://&lt;/span&gt;&lt;span class="n"&gt;tornadoes&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="n"&gt;proxy_http_version&lt;/span&gt; &lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="n"&gt;proxy_set_header&lt;/span&gt; &lt;span class="n"&gt;Upgrade&lt;/span&gt; &lt;span class="err"&gt;$&lt;/span&gt;&lt;span class="n"&gt;http_upgrade&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+        &lt;span class="n"&gt;proxy_set_header&lt;/span&gt; &lt;span class="n"&gt;Connection&lt;/span&gt; &lt;span class="s2"&gt;&amp;quot;Upgrade&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="err"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;nginx默认采用循环的方式分配请求，循环的将请求分配到upstream中定义的服务地址。location中的定义对支持websocket必不可少。&lt;/p&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sat, 27 Aug 2016 16:52:00 +0800</pubDate><guid isPermaLink="false">tag:lijunwei.github.io,2016-08-27:pages/2016/08/27/WebSocket使用初探(Tornado+Nginx).html</guid><category>WebSocket</category></item><item><title>使用Celery踩过的坑</title><link>http://lijunwei.github.io/pages/2016/05/08/%E4%BD%BF%E7%94%A8Celery%E8%B8%A9%E8%BF%87%E7%9A%84%E5%9D%91.html</link><description>&lt;h2&gt;为什么要使用celery&lt;/h2&gt;
 &lt;p&gt;Celery是一个使用Python开发的分布式任务调度模块，因此对于大量使用Python构建的系统，可以说是无缝衔接，使用起来很方便。Celery专注于实时处理任务，同时也支持任务的定时调度。因此适合实时异步任务定时任务等调度场景。Celery需要依靠RabbitMQ等作为消息代理，同时也支持Redis甚至是Mysql，Mongo等，当然，官方默认推荐的是RabbitMQ。&lt;/p&gt;
 &lt;h2&gt;broker的选择&lt;/h2&gt;
 &lt;p&gt;虽然官方支持的broker有很多，包括RabbitMQ，Redis甚至是数据库，但是不推荐使用数据库，因为数据库需要不断访问磁盘，当你的任务量大了之后会造成很严重的性能问题，同时你的应用很可能也在使用同一个数据库，这样可能导致你的应用被拖垮。如果业务环境比较简单可以选择Redis，如果比较复杂选择RabbitMQ，因为RabbitMQ是官方推荐的，但是比Redis操作起来又相对复杂些。我的选择是broker用RabbitMQ，backend用Redis&lt;/p&gt;
 &lt;h2&gt;celery不能用root用户启动问题 C_FORCE_ROOT environment&lt;/h2&gt;
 &lt;p&gt;如果使用root用户启动celery会遇到下面的问题&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;Running a worker with superuser privileges when the
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;Running a worker with superuser privileges when the
 worker accepts messages serialized with pickle is a very bad idea!
 If you really want to continue then you have to set the C_FORCE_ROOT
 environment variable (but please think about this before you do).
@@ -13,9 +78,9 @@ environment variable (but please think about this before you do).
 
 
 &lt;p&gt;解决办法：&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Celery&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;platforms&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;celery&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Celery&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;platforms&lt;/span&gt;
 
-&lt;span class="n"&gt;platforms&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;C_FORCE_ROOT&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;True&lt;/span&gt;  &lt;span class="c"&gt;#加上这一行&lt;/span&gt;
+&lt;span class="n"&gt;platforms&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;C_FORCE_ROOT&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="bp"&gt;True&lt;/span&gt;  &lt;span class="c1"&gt;#加上这一行&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
 
 
@@ -53,7 +118,7 @@ be redelivered to another worker and executed.&lt;/p&gt;
 &lt;p&gt;user@z:/$ celery -A proj worker -Q feeds,celery&lt;/p&gt;
 &lt;/blockquote&gt;
 &lt;p&gt;直接使用&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;CELERY_ROUTES = {&amp;#39;feed.tasks.import_feed&amp;#39;: {&amp;#39;queue&amp;#39;: &amp;#39;feeds&amp;#39;}}
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;CELERY_ROUTES = {&amp;#39;feed.tasks.import_feed&amp;#39;: {&amp;#39;queue&amp;#39;: &amp;#39;feeds&amp;#39;}}
 user@z:/$ celery -A proj worker -Q feeds,celery
 &lt;/pre&gt;&lt;/div&gt;
 
@@ -61,9 +126,9 @@ user@z:/$ celery -A proj worker -Q feeds,celery
 &lt;p&gt;指定routes,就会自动生成对应的queue，然后使用-Q指定queue启动celery就可以，默认的queue名字是celery。可以看&lt;a href="http://docs.celeryproject.org/en/latest/userguide/routing.html#automatic-routing"&gt;官方文档&lt;/a&gt;对默认queue的名字进行修改。&lt;/p&gt;
 &lt;h2&gt;启动多个workers执行不同的任务&lt;/h2&gt;
 &lt;p&gt;在同一台机器上，对于优先级不同的任务最好启动不同的worker去执行，比如把实时任务和定时任务分开，把执行频率高的任务和执行频率低的任务分开，这样有利于保证高优先级的任务可以得到更多的系统资源，同时高频率的实时任务日志比较多也会影响实时任务的日志查看，分开就可以记录到不同的日志文件，方便查看。&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="nv"&gt;$ &lt;/span&gt;celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker1.%h
-&lt;span class="nv"&gt;$ &lt;/span&gt;celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker2.%h
-&lt;span class="nv"&gt;$ &lt;/span&gt;celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker3.%h
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;$ celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker1.%h
+$ celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker2.%h
+$ celery -A proj worker --loglevel&lt;span class="o"&gt;=&lt;/span&gt;INFO --concurrency&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt; -n worker3.%h
 &lt;/pre&gt;&lt;/div&gt;
 
 
@@ -71,12 +136,12 @@ user@z:/$ celery -A proj worker -Q feeds,celery
 高优先级的任务可以分配更多的concurrency，但是并不是worker并法数越多越好，保证任务不堆积就好。&lt;/p&gt;
 &lt;h2&gt;是否需要关注任务执行状态&lt;/h2&gt;
 &lt;p&gt;这个要视具体的业务场景来看，如果对结果不关心，或者任务的执行本身会对数据产生影响，通过对数据的判断可以知道执行的结果那就不需要返回celery任务的退出状态，可以设置&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;CELERY_IGNORE_RESULT = True
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;CELERY_IGNORE_RESULT = True
 &lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;或者&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;@app.task(ignore_result=True)
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;@app.task(ignore_result=True)
 def mytask(…):
     something()
 &lt;/pre&gt;&lt;/div&gt;
@@ -85,9 +150,9 @@ def mytask(…):
 &lt;p&gt;但是，如果业务需要根据任务执行的状态进行响应的处理就不要这样设置。&lt;/p&gt;
 &lt;h2&gt;内存泄漏&lt;/h2&gt;
 &lt;p&gt;长时间运行Celery有可能发生内存泄露，可以像下面这样设置&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;CELERYD_MAX_TASKS_PER_CHILD = 40 # 每个worker执行了多少任务就会死掉
-&lt;/pre&gt;&lt;/div&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sun, 08 May 2016 13:55:00 +0800</pubDate><guid>tag:lijunwei.github.io,2016-05-08:pages/2016/05/08/使用Celery踩过的坑.html</guid><category>Celery</category></item><item><title>Ansible问题总结</title><link>http://lijunwei.github.io/pages/2016/04/03/Ansible%E9%97%AE%E9%A2%98%E6%80%BB%E7%BB%93.html</link><description>&lt;h2&gt;问题描述&lt;/h2&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="n"&gt;paramiko&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;The&lt;/span&gt; &lt;span class="n"&gt;authenticity&lt;/span&gt; &lt;span class="n"&gt;of&lt;/span&gt; &lt;span class="n"&gt;host&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;[*.*.*.*]:8822&amp;#39;&lt;/span&gt; &lt;span class="n"&gt;can&lt;/span&gt;&lt;span class="err"&gt;&amp;#39;&lt;/span&gt;&lt;span class="n"&gt;t&lt;/span&gt; &lt;span class="n"&gt;be&lt;/span&gt; &lt;span class="n"&gt;established&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;CELERYD_MAX_TASKS_PER_CHILD = 40 # 每个worker执行了多少任务就会死掉
+&lt;/pre&gt;&lt;/div&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sun, 08 May 2016 13:55:00 +0800</pubDate><guid isPermaLink="false">tag:lijunwei.github.io,2016-05-08:pages/2016/05/08/使用Celery踩过的坑.html</guid><category>Celery</category></item><item><title>Ansible问题总结</title><link>http://lijunwei.github.io/pages/2016/04/03/Ansible%E9%97%AE%E9%A2%98%E6%80%BB%E7%BB%93.html</link><description>&lt;h2&gt;问题描述&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="n"&gt;paramiko&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt; &lt;span class="n"&gt;The&lt;/span&gt; &lt;span class="n"&gt;authenticity&lt;/span&gt; &lt;span class="n"&gt;of&lt;/span&gt; &lt;span class="n"&gt;host&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;[*.*.*.*]:8822&amp;#39;&lt;/span&gt; &lt;span class="n"&gt;can&lt;/span&gt;&lt;span class="err"&gt;&amp;#39;&lt;/span&gt;&lt;span class="n"&gt;t&lt;/span&gt; &lt;span class="n"&gt;be&lt;/span&gt; &lt;span class="n"&gt;established&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
 &lt;span class="n"&gt;The&lt;/span&gt; &lt;span class="n"&gt;ssh&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;rsa&lt;/span&gt; &lt;span class="n"&gt;key&lt;/span&gt; &lt;span class="n"&gt;fingerprint&lt;/span&gt; &lt;span class="k"&gt;is&lt;/span&gt; &lt;span class="n"&gt;f22cae7f4b39a92d4a38f97b9102a57e&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
 &lt;span class="n"&gt;Are&lt;/span&gt; &lt;span class="n"&gt;you&lt;/span&gt; &lt;span class="n"&gt;sure&lt;/span&gt; &lt;span class="n"&gt;you&lt;/span&gt; &lt;span class="n"&gt;want&lt;/span&gt; &lt;span class="n"&gt;to&lt;/span&gt; &lt;span class="k"&gt;continue&lt;/span&gt; &lt;span class="n"&gt;connecting&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;yes&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;no&lt;/span&gt;&lt;span class="o"&gt;)?&lt;/span&gt;
 &lt;/pre&gt;&lt;/div&gt;
@@ -96,15 +161,15 @@ def mytask(…):
 &lt;p&gt;用ansible去管理一台新机器时遇到了上面的问题，需要输入yes交互才能继续执行命令，因为这样的问题导致批量执行的任务有些没有执行。
 解决办法也很简单&lt;/p&gt;
 &lt;p&gt;修改ansible.cfg文件中的&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;#host_key_checking = False   关闭第一次使用ansible连接客户端是输入命令提示
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;#host_key_checking = False   关闭第一次使用ansible连接客户端是输入命令提示
 &lt;/pre&gt;&lt;/div&gt;
 
 
-&lt;p&gt;默认是有注释的，去掉注释就行。&lt;/p&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sun, 03 Apr 2016 18:43:00 +0800</pubDate><guid>tag:lijunwei.github.io,2016-04-03:pages/2016/04/03/Ansible问题总结.html</guid><category>自动化</category></item><item><title>Flask部署</title><link>http://lijunwei.github.io/pages/2016/01/31/Flask%E9%83%A8%E7%BD%B2.html</link><description>&lt;h2&gt;前言&lt;/h2&gt;
-&lt;p&gt;开发完Flask的项目，接下来就是要部署测试，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。&lt;/p&gt;
+&lt;p&gt;默认是有注释的，去掉注释就行。&lt;/p&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sun, 03 Apr 2016 18:43:00 +0800</pubDate><guid isPermaLink="false">tag:lijunwei.github.io,2016-04-03:pages/2016/04/03/Ansible问题总结.html</guid><category>自动化</category></item><item><title>关于我</title><link>http://lijunwei.github.io/pages/2016/04/03/About.html</link><description>&lt;p&gt;用Python和Golang做后端，前端略懂，目前在聚美优品搬砖。&lt;/p&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sun, 03 Apr 2016 17:15:00 +0800</pubDate><guid isPermaLink="false">tag:lijunwei.github.io,2016-04-03:pages/2016/04/03/About.html</guid></item><item><title>Flask部署</title><link>http://lijunwei.github.io/pages/2016/01/31/Flask%E9%83%A8%E7%BD%B2.html</link><description>&lt;h2&gt;前言&lt;/h2&gt;
+&lt;p&gt;开发完公司的数据库自动化平台，接下来就是要部署测试，之前没真正部署过，这次正好学习了，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。&lt;/p&gt;
 &lt;h2&gt;配置Python虚拟环境&lt;/h2&gt;
 &lt;p&gt;先安装Python2.7  &lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
 tar -jxvf Python-2.7.tar.bz2   
 cd Python-2.7
 ./configure  后面可以加上你希望安装的路径 比如 --prefix=/usr/local ，默认是/usr/local   
@@ -115,7 +180,7 @@ make clean &amp;amp; make distclean
 
 &lt;p&gt;安装pip，virtualenv &lt;br /&gt;
 因为系统默认是python2.6的，所以通过yum安装的pip会默认装到2.6的目录下，而且yum还依赖2.6，所以如果直接修改系统默认的python版本会导致无法使用yum，因此我通过distribute的方式安装easy_install继而安装pip。   &lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;wget https://pypi.python.org/packages/source/d/distribute/distribute-0.6.49.tar.gz      
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;wget https://pypi.python.org/packages/source/d/distribute/distribute-0.6.49.tar.gz      
 python distribute_setup.py #注意这里的python一定是你python2.7的路径下的python      
 mkdir myproject   
 cd myproject   
@@ -124,17 +189,17 @@ virtualenv venv
 
 
 &lt;p&gt;安装需要的包   &lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;pip install -r requirements.txt #requirements.txt中记录了项目用到的所有包
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;pip install -r requirements.txt #requirements.txt中记录了项目用到的所有包
 &lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;安装gunicorn  &lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;pip install gunicorn
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;pip install gunicorn
 &lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;安装supervisor&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;pip install supervisor
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;pip install supervisor
 pip freeze &amp;gt; requirements.txt
 每次pip安装了新的库之后都要freeze一次，这是个好习惯
 &lt;/pre&gt;&lt;/div&gt;
@@ -142,19 +207,19 @@ pip freeze &amp;gt; requirements.txt
 
 &lt;h2&gt;配置supervisor&lt;/h2&gt;
 &lt;p&gt;supervisor是基于Python的进程管理工具，可以用守护进程的方式执行程序。&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;echo_supervisord_conf &amp;gt; supervisor.conf   # 生成 supervisor 默认配置文件
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;echo_supervisord_conf &amp;gt; supervisor.conf   # 生成 supervisor 默认配置文件
 &lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;这个文件放在哪里都可以，只要你执行supervisor的时候指定它就可以，但还是建议放到/etc下，这样好管理，在生成的默认配置文件底部有一个
 include选项，用来包含要管理的程序的supervisor配置文件。&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;[include]      
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;[include]      
 files = /home/junweil/my_etc/supervisor/conf.d/*.conf
 &lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;下面是gunicorn的配置，命名为*.conf,放在supervisor/conf.d里面，我们应用的gunicorn，celery等程序的启动配置就应该放在          supervisor/conf.d中。  &lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="k"&gt;[program:wsgi]&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;[program:wsgi]&lt;/span&gt;
 &lt;span class="na"&gt;command&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/myproject/venv/bin/python/gunicorn -w 4 -b 0.0.0.0:5500 wsgi:app&lt;/span&gt;
 &lt;span class="na"&gt;directory&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/myproject&lt;/span&gt;
 &lt;span class="na"&gt;startsecs&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;0&lt;/span&gt;
@@ -167,7 +232,7 @@ files = /home/junweil/my_etc/supervisor/conf.d/*.conf
 
 
 &lt;p&gt;下面是celery的配置，同gunicorn一样，我们的项目用到celery做异步任务的调度，如果不需要用到的可以忽略 &lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="k"&gt;[program:celery]&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="k"&gt;[program:celery]&lt;/span&gt;
 &lt;span class="na"&gt;command&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/myproject/venv/bin/python/celery worker -A app.celery --loglevel=info --beat&lt;/span&gt;
 &lt;span class="na"&gt;environment&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;PYTHONPATH=/home/myproject&lt;/span&gt;
 &lt;span class="na"&gt;directory&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s"&gt;/home/myproject&lt;/span&gt;
@@ -181,13 +246,13 @@ files = /home/junweil/my_etc/supervisor/conf.d/*.conf
 
 
 &lt;h2&gt;安装nginx&lt;/h2&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;CentOS yum install nginx
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;CentOS yum install nginx
 Ubuntu apt-get install nginx
 &lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;配置nginx，nginx主要用到了它的反向代理，详细配置就不列出来了。&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;    &lt;span class="nt"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;    &lt;span class="nt"&gt;server&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
         &lt;span class="n"&gt;listen&lt;/span&gt;   &lt;span class="m"&gt;80&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
         &lt;span class="n"&gt;root&lt;/span&gt; &lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;home&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;myproject&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;app&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
         &lt;span class="n"&gt;server_name&lt;/span&gt; &lt;span class="o"&gt;*****&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;
@@ -201,7 +266,7 @@ Ubuntu apt-get install nginx
 &lt;h2&gt;启动supervisor和nginx&lt;/h2&gt;
 &lt;p&gt;运行命令&lt;code&gt;supervisord -c supervisor.conf&lt;/code&gt;启动supervisor，这样刚才配置的gunicorn和celery就会以守护进程的方式运行起来。 &lt;br /&gt;
 supervisor相关命令  &lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;supervisord -c supervisor.conf                          通过配置文件启动supervisor
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;supervisord -c supervisor.conf                          通过配置文件启动supervisor
 supervisorctl -c supervisor.conf status                 察看supervisor的状态
 supervisorctl -c supervisor.conf reload                 重新载入 配置文件
 supervisorctl -c supervisor.conf start [all]|[appname]  启动指定/所有 supervisor管理的程序进程
@@ -210,19 +275,19 @@ supervisorctl -c supervisor.conf stop [all]|[appname]   关闭指定/所有 supe
 
 
 &lt;p&gt;启动nginx&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;nginx -c /etc/nginx/nginx.conf
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;nginx -c /etc/nginx/nginx.conf
 &lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;nginx相关命令&lt;/p&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;nginx -t 验证配置文件是否正确
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;nginx -t 验证配置文件是否正确
 nginx -s reload 重新载入配置文件，并重启
 &lt;/pre&gt;&lt;/div&gt;
 
 
 &lt;p&gt;在服务器上是nginx1.8版本的，我在自己虚拟机上实验的时候用的nginx1.9版本只要把配置文件放到sites-available文件夹中，并在sites-enabled中建立软连接指向sites-available文件夹中对应的配置文件即可。然后直接service nginx restart或/etc/init.d/nginx start&lt;/p&gt;
 &lt;h2&gt;flask启动文件 wsgi.py&lt;/h2&gt;
-&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="c"&gt;# coding: utf-8&lt;/span&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;span class="c1"&gt;# coding: utf-8&lt;/span&gt;
 
 &lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;app&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;create_app&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;db&lt;/span&gt;
 &lt;span class="kn"&gt;from&lt;/span&gt; &lt;span class="nn"&gt;flask&lt;/span&gt; &lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;render_template&lt;/span&gt;
@@ -232,12 +297,12 @@ nginx -s reload 重新载入配置文件，并重启
 
 &lt;span class="nd"&gt;@app.errorhandler&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;404&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
 &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;not_found&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;error&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;render_template&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;error/404.html&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;404&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;render_template&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;error/404.html&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;404&lt;/span&gt;
 
 
 &lt;span class="nd"&gt;@app.errorhandler&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;500&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
 &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;not_found&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;error&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
-    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;render_template&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s"&gt;&amp;#39;error/500.html&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;500&lt;/span&gt;
+    &lt;span class="k"&gt;return&lt;/span&gt; &lt;span class="n"&gt;render_template&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;error/500.html&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;500&lt;/span&gt;
 
 
 &lt;span class="nd"&gt;@app.teardown_request&lt;/span&gt;
@@ -250,6 +315,6 @@ nginx -s reload 重新载入配置文件，并重启
     &lt;span class="n"&gt;db&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;session&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;remove&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
 
 
-&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;__name__&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s"&gt;&amp;#39;__main__&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
+&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;__name__&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s1"&gt;&amp;#39;__main__&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;
     &lt;span class="n"&gt;app&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;run&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
-&lt;/pre&gt;&lt;/div&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sun, 31 Jan 2016 14:27:00 +0800</pubDate><guid>tag:lijunwei.github.io,2016-01-31:pages/2016/01/31/Flask部署.html</guid><category>Python</category><category>Flask</category></item></channel></rss>
+&lt;/pre&gt;&lt;/div&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">李俊伟</dc:creator><pubDate>Sun, 31 Jan 2016 14:27:00 +0800</pubDate><guid isPermaLink="false">tag:lijunwei.github.io,2016-01-31:pages/2016/01/31/Flask部署.html</guid><category>Python</category><category>Flask</category></item></channel></rss>

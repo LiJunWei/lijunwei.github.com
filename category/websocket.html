@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="utf-8">
-    <title>李俊伟-随笔 - 李俊伟</title>
+    <title>李俊伟-随笔 - WebSocket</title>
     <meta name="description" content="">
     <meta name="author" content="李俊伟">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -140,105 +140,11 @@ WebSocketHandler提供了一系列方法用以处理连接和消息收发，源�
         <hr />
     </div>
 		
-
- 
-        
-
- 
-
-    <div class='article'>
-        <a href="http://lijunwei.github.io/pages/2016/05/08/使用Celery踩过的坑.html"><h2>使用Celery踩过的坑</h2></a>
-        <div class= "well small"> 2016-05-08
-
-by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李俊伟</a>
- 
-
-
- </div>
-        <div class="summary"><p>使用Celery处理大量的异步任务，定时任务是很好的选择，可以快速水平扩展，使用简单易于维护。</p> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/05/08/使用Celery踩过的坑.html">read more</a></div>
-    </div>	
-				
-
- 
-        
-
- 
-
-    <div class='article'>
-        <a href="http://lijunwei.github.io/pages/2016/04/03/Ansible问题总结.html"><h2>Ansible问题总结</h2></a>
-        <div class= "well small"> 2016-04-03
-
-by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李俊伟</a>
- 
-
-
- </div>
-        <div class="summary"><h2>问题描述</h2>
-<div class="highlight"><pre><span></span><span class="n">paramiko</span><span class="o">:</span> <span class="n">The</span> <span class="n">authenticity</span> <span class="n">of</span> <span class="n">host</span> <span class="s1">&#39;[*.*.*.*]:8822&#39;</span> <span class="n">can</span><span class="err">&#39;</span><span class="n">t</span> <span class="n">be</span> <span class="n">established</span><span class="o">.</span>
-<span class="n">The</span> <span class="n">ssh</span><span class="o">-</span><span class="n">rsa</span> <span class="n">key</span> <span class="n">fingerprint</span> <span class="k">is</span> <span class="n">f22cae7f4b39a92d4a38f97b9102a57e</span><span class="o">.</span>
-<span class="n">Are</span> <span class="n">you</span> <span class="n">sure</span> <span class="n">you</span> <span class="n">want</span> <span class="n">to</span> <span class="k">continue</span> <span class="n">connecting</span> <span class="o">(</span><span class="n">yes</span><span class="o">/</span><span class="n">no</span><span class="o">)?</span>
-</pre></div>
-
-
-<p>用ansible去管理一台新机器时遇到了上面的问题，需要输入yes交互才能继续执行命令，因为这样的问题导致批量执行的任务有些没有执行。
-解决办法也很简单</p>
-<p>修改ansible.cfg文件中的</p>
-<div class="highlight"><pre><span></span>#host_key_checking = False   关闭第一次使用ansible连接客户端是输入命令提示
-</pre></div>
-
-
-<p>默认是有注释的，去掉注释就行。</p> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/04/03/Ansible问题总结.html">read more</a></div>
-    </div>	
-				
-
- 
-        
-
- 
-
-    <div class='article'>
-        <a href="http://lijunwei.github.io/pages/2016/04/03/About.html"><h2>关于我</h2></a>
-        <div class= "well small"> 2016-04-03
-
-by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李俊伟</a>
- 
-
-
- </div>
-        <div class="summary"><p>用Python和Golang做后端，前端略懂，目前在聚美优品搬砖。</p> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/04/03/About.html">read more</a></div>
-    </div>	
-				
-
- 
-        
-
- 
-
-    <div class='article'>
-        <a href="http://lijunwei.github.io/pages/2016/01/31/Flask部署.html"><h2>Flask部署</h2></a>
-        <div class= "well small"> 2016-01-31
-
-by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李俊伟</a>
- 
-
-
- </div>
-        <div class="summary"><h2>前言</h2>
-<p>开发完公司的数据库自动化平台，接下来就是要部署测试，之前没真正部署过，这次正好学习了，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。</p>
-<h2>配置Python虚拟环境</h2>
-<p>先安装Python2.7  </p>
-<div class="highlight"><pre><span></span>wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
-tar -jxvf Python-2.7.tar.bz2   
-cd Python-2.7
-./configure  后面可以加上你希望安装的路径 比如 --prefix=/usr/local ，默认是/usr/local   
-make &amp; make install ...</pre></div> <a class="btn btn-info xsmall" href="http://lijunwei.github.io/pages/2016/01/31/Flask部署.html">read more</a></div>
-    </div>	
-				
 <div class="pagination">
 <ul>
     <li class="prev disabled"><a href="#">&larr; Previous</a></li>
 
-    <li class="active"><a href="http://lijunwei.github.io/author/li-jun-wei.html">1</a></li>
+    <li class="active"><a href="http://lijunwei.github.io/category/websocket.html">1</a></li>
 
     <li class="next disabled"><a href="#">&rarr; Next</a></li>
 

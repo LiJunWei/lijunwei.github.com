@@ -66,10 +66,10 @@ by <a class="url fn" href="http://lijunwei.github.io/author/li-jun-wei.html">李
         </div>
 	
         <div><h2>前言</h2>
-<p>开发完Flask的项目，接下来就是要部署测试，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。</p>
+<p>开发完公司的数据库自动化平台，接下来就是要部署测试，之前没真正部署过，这次正好学习了，写下来部署的过程。项目用到Flask，部署采用的是gunicorn+supervisor+Nginx的方式，用gunicorn做容器，supervisor管理进程，Nginx做反向代理，以下是详细过程。</p>
 <h2>配置Python虚拟环境</h2>
 <p>先安装Python2.7  </p>
-<div class="highlight"><pre>wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
+<div class="highlight"><pre><span></span>wget http://python.org/ftp/python/2.7/Python-2.7.tar.bz2 
 tar -jxvf Python-2.7.tar.bz2   
 cd Python-2.7
 ./configure  后面可以加上你希望安装的路径 比如 --prefix=/usr/local ，默认是/usr/local   
@@ -80,7 +80,7 @@ make clean &amp; make distclean
 
 <p>安装pip，virtualenv <br />
 因为系统默认是python2.6的，所以通过yum安装的pip会默认装到2.6的目录下，而且yum还依赖2.6，所以如果直接修改系统默认的python版本会导致无法使用yum，因此我通过distribute的方式安装easy_install继而安装pip。   </p>
-<div class="highlight"><pre>wget https://pypi.python.org/packages/source/d/distribute/distribute-0.6.49.tar.gz      
+<div class="highlight"><pre><span></span>wget https://pypi.python.org/packages/source/d/distribute/distribute-0.6.49.tar.gz      
 python distribute_setup.py #注意这里的python一定是你python2.7的路径下的python      
 mkdir myproject   
 cd myproject   
@@ -89,17 +89,17 @@ virtualenv venv
 
 
 <p>安装需要的包   </p>
-<div class="highlight"><pre>pip install -r requirements.txt #requirements.txt中记录了项目用到的所有包
+<div class="highlight"><pre><span></span>pip install -r requirements.txt #requirements.txt中记录了项目用到的所有包
 </pre></div>
 
 
 <p>安装gunicorn  </p>
-<div class="highlight"><pre>pip install gunicorn
+<div class="highlight"><pre><span></span>pip install gunicorn
 </pre></div>
 
 
 <p>安装supervisor</p>
-<div class="highlight"><pre>pip install supervisor
+<div class="highlight"><pre><span></span>pip install supervisor
 pip freeze &gt; requirements.txt
 每次pip安装了新的库之后都要freeze一次，这是个好习惯
 </pre></div>
@@ -107,19 +107,19 @@ pip freeze &gt; requirements.txt
 
 <h2>配置supervisor</h2>
 <p>supervisor是基于Python的进程管理工具，可以用守护进程的方式执行程序。</p>
-<div class="highlight"><pre>echo_supervisord_conf &gt; supervisor.conf   # 生成 supervisor 默认配置文件
+<div class="highlight"><pre><span></span>echo_supervisord_conf &gt; supervisor.conf   # 生成 supervisor 默认配置文件
 </pre></div>
 
 
 <p>这个文件放在哪里都可以，只要你执行supervisor的时候指定它就可以，但还是建议放到/etc下，这样好管理，在生成的默认配置文件底部有一个
 include选项，用来包含要管理的程序的supervisor配置文件。</p>
-<div class="highlight"><pre>[include]      
+<div class="highlight"><pre><span></span>[include]      
 files = /home/junweil/my_etc/supervisor/conf.d/*.conf
 </pre></div>
 
 
 <p>下面是gunicorn的配置，命名为*.conf,放在supervisor/conf.d里面，我们应用的gunicorn，celery等程序的启动配置就应该放在          supervisor/conf.d中。  </p>
-<div class="highlight"><pre><span class="k">[program:wsgi]</span>
+<div class="highlight"><pre><span></span><span class="k">[program:wsgi]</span>
 <span class="na">command</span><span class="o">=</span><span class="s">/home/myproject/venv/bin/python/gunicorn -w 4 -b 0.0.0.0:5500 wsgi:app</span>
 <span class="na">directory</span><span class="o">=</span><span class="s">/home/myproject</span>
 <span class="na">startsecs</span><span class="o">=</span><span class="s">0</span>
@@ -132,7 +132,7 @@ files = /home/junweil/my_etc/supervisor/conf.d/*.conf
 
 
 <p>下面是celery的配置，同gunicorn一样，我们的项目用到celery做异步任务的调度，如果不需要用到的可以忽略 </p>
-<div class="highlight"><pre><span class="k">[program:celery]</span>
+<div class="highlight"><pre><span></span><span class="k">[program:celery]</span>
 <span class="na">command</span><span class="o">=</span><span class="s">/home/myproject/venv/bin/python/celery worker -A app.celery --loglevel=info --beat</span>
 <span class="na">environment</span><span class="o">=</span><span class="s">PYTHONPATH=/home/myproject</span>
 <span class="na">directory</span><span class="o">=</span><span class="s">/home/myproject</span>
@@ -146,13 +146,13 @@ files = /home/junweil/my_etc/supervisor/conf.d/*.conf
 
 
 <h2>安装nginx</h2>
-<div class="highlight"><pre>CentOS yum install nginx
+<div class="highlight"><pre><span></span>CentOS yum install nginx
 Ubuntu apt-get install nginx
 </pre></div>
 
 
 <p>配置nginx，nginx主要用到了它的反向代理，详细配置就不列出来了。</p>
-<div class="highlight"><pre>    <span class="nt">server</span> <span class="p">{</span>
+<div class="highlight"><pre><span></span>    <span class="nt">server</span> <span class="p">{</span>
         <span class="n">listen</span>   <span class="m">80</span><span class="p">;</span>
         <span class="n">root</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">myproject</span><span class="o">/</span><span class="n">app</span><span class="p">;</span>
         <span class="n">server_name</span> <span class="o">*****</span><span class="p">;</span>
@@ -166,7 +166,7 @@ Ubuntu apt-get install nginx
 <h2>启动supervisor和nginx</h2>
 <p>运行命令<code>supervisord -c supervisor.conf</code>启动supervisor，这样刚才配置的gunicorn和celery就会以守护进程的方式运行起来。 <br />
 supervisor相关命令  </p>
-<div class="highlight"><pre>supervisord -c supervisor.conf                          通过配置文件启动supervisor
+<div class="highlight"><pre><span></span>supervisord -c supervisor.conf                          通过配置文件启动supervisor
 supervisorctl -c supervisor.conf status                 察看supervisor的状态
 supervisorctl -c supervisor.conf reload                 重新载入 配置文件
 supervisorctl -c supervisor.conf start [all]|[appname]  启动指定/所有 supervisor管理的程序进程
@@ -175,19 +175,19 @@ supervisorctl -c supervisor.conf stop [all]|[appname]   关闭指定/所有 supe
 
 
 <p>启动nginx</p>
-<div class="highlight"><pre>nginx -c /etc/nginx/nginx.conf
+<div class="highlight"><pre><span></span>nginx -c /etc/nginx/nginx.conf
 </pre></div>
 
 
 <p>nginx相关命令</p>
-<div class="highlight"><pre>nginx -t 验证配置文件是否正确
+<div class="highlight"><pre><span></span>nginx -t 验证配置文件是否正确
 nginx -s reload 重新载入配置文件，并重启
 </pre></div>
 
 
 <p>在服务器上是nginx1.8版本的，我在自己虚拟机上实验的时候用的nginx1.9版本只要把配置文件放到sites-available文件夹中，并在sites-enabled中建立软连接指向sites-available文件夹中对应的配置文件即可。然后直接service nginx restart或/etc/init.d/nginx start</p>
 <h2>flask启动文件 wsgi.py</h2>
-<div class="highlight"><pre><span class="c"># coding: utf-8</span>
+<div class="highlight"><pre><span></span><span class="c1"># coding: utf-8</span>
 
 <span class="kn">from</span> <span class="nn">app</span> <span class="kn">import</span> <span class="n">create_app</span><span class="p">,</span> <span class="n">db</span>
 <span class="kn">from</span> <span class="nn">flask</span> <span class="kn">import</span> <span class="n">render_template</span>
@@ -197,12 +197,12 @@ nginx -s reload 重新载入配置文件，并重启
 
 <span class="nd">@app.errorhandler</span><span class="p">(</span><span class="mi">404</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">not_found</span><span class="p">(</span><span class="n">error</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s">&#39;error/404.html&#39;</span><span class="p">),</span> <span class="mi">404</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;error/404.html&#39;</span><span class="p">),</span> <span class="mi">404</span>
 
 
 <span class="nd">@app.errorhandler</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">not_found</span><span class="p">(</span><span class="n">error</span><span class="p">):</span>
-    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s">&#39;error/500.html&#39;</span><span class="p">),</span> <span class="mi">500</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;error/500.html&#39;</span><span class="p">),</span> <span class="mi">500</span>
 
 
 <span class="nd">@app.teardown_request</span>
@@ -215,7 +215,7 @@ nginx -s reload 重新载入配置文件，并重启
     <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
 
 
-<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
     <span class="n">app</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
 </pre></div></div>
 	
@@ -284,7 +284,9 @@ nginx -s reload 重新载入配置文件，并重启
                 </li>
                 
                 <li><a href="http://lijunwei.github.io/category/celery.html">Celery</a></li>
+                <li><a href="http://lijunwei.github.io/category/misc.html">misc</a></li>
                 <li><a href="http://lijunwei.github.io/category/python.html">Python</a></li>
+                <li><a href="http://lijunwei.github.io/category/websocket.html">WebSocket</a></li>
                 <li><a href="http://lijunwei.github.io/category/zi-dong-hua.html">自动化</a></li>
                    
             </ul>
